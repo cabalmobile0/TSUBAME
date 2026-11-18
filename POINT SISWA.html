@@ -1,0 +1,1245 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monitoring Point Siswa</title>
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+body { -webkit-tap-highlight-color: transparent; }
+.page { display:none; }
+.page.active { display:block; }
+.nav-btn { transition:.2s; }
+.nav-btn.active { background:#2563eb; color:white; }
+.point-bar { height:9px; border-radius:20px; background:#e5e7eb; overflow:hidden; }
+.point-progress { height:100%; border-radius:20px; transition:width .3s ease; }
+.profile-value { overflow-wrap:anywhere; }
+
+@media(min-width:768px) {
+  .mobile-view { display:none; }
+}
+@media(max-width:767px) {
+  .desktop-view { display:none; }
+}
+</style>
+</head>
+
+<body class="bg-slate-100 font-sans text-slate-800">
+
+<div class="max-w-7xl mx-auto p-3 sm:p-5 md:p-7 space-y-5">
+
+<!-- HEADER -->
+<header class="bg-white rounded-2xl shadow-sm p-4 sm:p-6">
+  <div class="flex flex-col gap-4">
+
+    <div class="flex items-center gap-3">
+      <div class="bg-blue-600 text-white w-11 h-11 rounded-xl flex items-center justify-center text-xl">★</div>
+      <div>
+        <h1 class="font-bold text-lg sm:text-2xl">Monitoring Point Siswa</h1>
+        <p class="text-xs text-slate-500 mt-1">Sistem Monitoring Pelanggaran</p>
+      </div>
+    </div>
+
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <span id="statusBadge" class="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-semibold">Menghubungkan...</span>
+      <p id="lastUpdate" class="text-xs text-slate-400">Menunggu sinkronisasi...</p>
+    </div>
+
+    <!-- NAVIGASI 3 TAB -->
+    <nav class="grid grid-cols-3 gap-2 border-t pt-3">
+
+      <button onclick="pindahHalaman('dashboard')" id="navDashboard"
+        class="nav-btn active rounded-xl py-3 text-xs sm:text-sm font-semibold">
+        ▦ Dashboard
+      </button>
+
+      <button onclick="pindahHalaman('master')" id="navMaster"
+        class="nav-btn bg-slate-100 text-slate-600 rounded-xl py-3 text-xs sm:text-sm font-semibold">
+        ☷ Master
+      </button>
+
+      <button onclick="pindahHalaman('allScores')" id="navAllScores"
+        class="nav-btn bg-slate-100 text-slate-600 rounded-xl py-3 text-xs sm:text-sm font-semibold">
+        📚 Seluruh Nilai
+      </button>
+
+    </nav>
+  </div>
+</header>
+
+<!-- DASHBOARD -->
+<main id="pageDashboard" class="page active space-y-5">
+
+  <div class="flex gap-2">
+    <div class="relative flex-1">
+      <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+      <input type="text" id="searchInput" oninput="filterTabel()"
+        placeholder="Cari nama atau perusahaan..."
+        class="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-3 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-400">
+    </div>
+
+    <button onclick="ambilDataLive()" id="refreshButton"
+      class="bg-blue-600 text-white px-4 rounded-xl text-sm font-semibold whitespace-nowrap">
+      ↻ Refresh
+    </button>
+  </div>
+
+  <section class="grid grid-cols-3 gap-2 sm:gap-4">
+
+    <div class="bg-white rounded-xl p-3 sm:p-5 shadow-sm border-b-4 border-blue-500">
+      <p class="text-[10px] sm:text-sm text-slate-500">Total Siswa</p>
+      <h2 id="totalSiswa" class="text-2xl sm:text-3xl font-bold mt-1">0</h2>
+      <p class="text-[10px] text-slate-400 mt-1">Terdaftar</p>
+    </div>
+
+    <div class="bg-white rounded-xl p-3 sm:p-5 shadow-sm border-b-4 border-red-500">
+      <p class="text-[10px] sm:text-sm text-slate-500">Melanggar</p>
+      <h2 id="totalMelanggar" class="text-2xl sm:text-3xl font-bold text-red-600 mt-1">0</h2>
+      <p class="text-[10px] text-slate-400 mt-1">Siswa</p>
+    </div>
+
+    <div class="bg-white rounded-xl p-3 sm:p-5 shadow-sm border-b-4 border-green-500">
+      <p class="text-[10px] sm:text-sm text-slate-500">Tanpa Pelanggaran</p>
+      <h2 id="totalAman" class="text-2xl sm:text-3xl font-bold text-green-600 mt-1">0</h2>
+      <p class="text-[10px] text-slate-400 mt-1">Siswa</p>
+    </div>
+
+  </section>
+
+  <section class="bg-white rounded-2xl shadow-sm p-4 sm:p-6">
+
+    <div class="flex justify-between items-center mb-4">
+      <div>
+        <h2 class="font-bold text-lg">Data Pelanggaran</h2>
+        <p class="text-xs text-slate-400 mt-1">Klik nama siswa untuk membuka profil</p>
+      </div>
+      <span id="jumlahTampil" class="text-xs bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full">0 siswa</span>
+    </div>
+
+    <div class="desktop-view overflow-x-auto">
+      <table class="w-full border-collapse text-sm">
+        <thead>
+          <tr class="bg-slate-100 text-slate-600">
+            <th class="p-3 border text-center">No</th>
+            <th class="p-3 border text-left">Nama Siswa</th>
+            <th class="p-3 border text-left">Perusahaan</th>
+            <th class="p-3 border text-center">Point Sisa</th>
+            <th class="p-3 border text-left min-w-[170px]">Progress Point</th>
+            <th class="p-3 border text-left">Pelanggaran</th>
+          </tr>
+        </thead>
+
+        <tbody id="tbodyDesktop">
+          <tr>
+            <td colspan="6" class="p-5 text-center text-slate-400">Memuat data...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div id="tbodyMobile" class="mobile-view space-y-3">
+      <p class="text-center text-slate-400 py-5">Memuat data...</p>
+    </div>
+
+  </section>
+</main>
+
+<!-- MASTER PERATURAN -->
+<main id="pageMaster" class="page space-y-5">
+
+  <section class="bg-white rounded-2xl shadow-sm p-4 sm:p-6">
+
+    <div class="flex items-center justify-between gap-3 mb-5">
+      <div>
+        <h2 class="font-bold text-xl">Master Peraturan</h2>
+        <p class="text-xs text-slate-400 mt-1">Daftar pelanggaran dan bobot pengurangan poin</p>
+      </div>
+      <div class="bg-red-50 text-red-600 rounded-xl p-3 text-xl">☷</div>
+    </div>
+
+    <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-5">
+      <p class="text-sm font-semibold text-blue-800">Informasi Bobot Poin</p>
+      <p class="text-xs text-blue-600 mt-1">
+        Setiap pelanggaran memiliki bobot pengurangan poin sesuai ketentuan database.
+      </p>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3 mb-5">
+
+      <div class="bg-slate-50 border rounded-xl p-4">
+        <p class="text-xs text-slate-500">Total Jenis Pelanggaran</p>
+        <h3 id="totalAturan" class="text-2xl font-bold mt-1">0</h3>
+      </div>
+
+      <div class="bg-red-50 border border-red-100 rounded-xl p-4">
+        <p class="text-xs text-red-500">Total Bobot Poin</p>
+        <h3 id="totalBobot" class="text-2xl font-bold text-red-600 mt-1">0</h3>
+      </div>
+
+    </div>
+
+    <div class="relative mb-4">
+      <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+      <input type="text" id="searchMaster" oninput="filterMaster()"
+        placeholder="Cari jenis pelanggaran..."
+        class="w-full bg-slate-50 border rounded-xl pl-10 pr-3 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-400">
+    </div>
+
+    <div id="gridPeraturan" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <p class="text-slate-400 text-sm">Memuat peraturan...</p>
+    </div>
+
+    <p id="jumlahMaster" class="text-xs text-slate-400 mt-4">0 peraturan</p>
+
+  </section>
+</main>
+
+<!-- SELURUH NILAI SISWA -->
+<main id="pageAllScores" class="page space-y-5">
+
+  <section class="bg-white rounded-2xl shadow-sm p-4 sm:p-6">
+
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+      <div>
+        <h2 class="font-bold text-xl">Seluruh Nilai Siswa</h2>
+        <p class="text-xs text-slate-400 mt-1">
+          Rekap nilai seluruh siswa berdasarkan hasil ujian setiap bab
+        </p>
+      </div>
+
+      <div class="bg-blue-50 text-blue-600 rounded-xl p-3 text-xl w-fit">📚</div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3 mb-5">
+
+      <div class="bg-blue-50 border border-blue-100 rounded-xl p-4">
+        <p class="text-xs text-blue-600">Total Siswa</p>
+        <h3 id="jumlahSiswaNilai" class="text-2xl font-bold text-blue-800 mt-1">0</h3>
+      </div>
+
+      <div class="bg-green-50 border border-green-100 rounded-xl p-4">
+        <p class="text-xs text-green-600">Total Bab Ujian</p>
+        <h3 id="jumlahBabNilai" class="text-2xl font-bold text-green-800 mt-1">0</h3>
+      </div>
+
+    </div>
+
+    <div class="relative mb-4">
+      <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+
+      <input type="text" id="searchAllScores"
+        oninput="filterAllScores()"
+        placeholder="Cari nama atau perusahaan siswa..."
+        class="w-full bg-slate-50 border rounded-xl pl-10 pr-3 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-400">
+    </div>
+
+    <div class="overflow-x-auto border rounded-xl">
+      <table class="w-full border-collapse text-sm whitespace-nowrap">
+
+        <thead id="theadAllScores" class="bg-slate-100 text-slate-600"></thead>
+
+        <tbody id="tbodyAllScores">
+          <tr>
+            <td class="p-5 text-center text-slate-400">
+              Memuat seluruh nilai siswa...
+            </td>
+          </tr>
+        </tbody>
+
+      </table>
+    </div>
+
+    <p id="jumlahHasilNilai" class="text-xs text-slate-400 mt-4">
+      0 siswa
+    </p>
+
+    <p class="text-xs text-slate-400 mt-2">
+      Geser tabel ke kanan untuk melihat seluruh bab ujian.
+    </p>
+
+  </section>
+</main>
+
+<!-- PROFIL SISWA -->
+<main id="pageProfile" class="page space-y-5">
+
+  <button onclick="pindahHalaman('dashboard')"
+    class="bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50">
+    ← Kembali ke Dashboard
+  </button>
+
+  <section class="bg-white rounded-2xl shadow-sm p-4 sm:p-6">
+
+    <div class="flex items-center gap-3 border-b pb-4 mb-5">
+      <div class="w-12 h-12 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center text-2xl">👤</div>
+
+      <div>
+        <p class="text-xs text-slate-400 font-semibold">PROFIL SISWA</p>
+        <h2 id="profileNama" class="font-bold text-xl">Nama Siswa</h2>
+        <p id="profileNomor" class="text-xs text-slate-400 mt-1">Nomor siswa</p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+
+      <div class="bg-slate-50 border rounded-xl p-4">
+        <p class="text-xs text-slate-500">Perusahaan</p>
+        <p id="profilePerusahaan" class="font-semibold mt-1 profile-value">-</p>
+      </div>
+
+      <div class="bg-slate-50 border rounded-xl p-4">
+        <p class="text-xs text-slate-500">Point Sisa</p>
+        <p id="profilePoint" class="text-2xl font-bold mt-1">-</p>
+        <p class="text-xs text-slate-400">Dari 100 poin</p>
+      </div>
+
+    </div>
+
+    <div class="mb-6">
+      <p class="text-sm font-semibold mb-2">Progress Point</p>
+      <div id="profileProgress"></div>
+    </div>
+
+    <div class="border-t pt-5">
+      <h3 class="font-bold text-lg mb-3">Daftar Pelanggaran</h3>
+      <div id="profilePelanggaran"></div>
+    </div>
+
+  </section>
+
+  <section class="bg-white rounded-2xl shadow-sm p-4 sm:p-6">
+
+    <div class="flex items-center justify-between gap-3 mb-5">
+      <div>
+        <h2 class="font-bold text-xl">Rekap Nilai Siswa</h2>
+        <p class="text-xs text-slate-400 mt-1">Hasil nilai ujian setiap bab</p>
+      </div>
+      <div class="bg-blue-50 text-blue-600 rounded-xl p-3 text-xl">📚</div>
+    </div>
+
+    <div id="profileRekap">
+      <p class="text-sm text-slate-400">Memuat rekap nilai...</p>
+    </div>
+
+  </section>
+</main>
+
+<footer class="text-center text-xs text-slate-400 py-3">
+  Monitoring Point & Pelanggaran Siswa
+  <br>Sinkronisasi otomatis setiap 30 detik
+</footer>
+
+</div>
+
+<script>
+
+// URL WEB APP
+const WEB_APP_URL =
+"https://script.google.com/macros/s/AKfycbwnfB3r_apC5dwJjxFK4BNdDxtfj1CKQFQ8Kbq8fsMc5ZVmqPhjJ9mTC7xniqF7bOIZ/exec";
+
+let masterPelanggaran = {};
+let dataSiswa = [];
+let dataRekap = [];
+let headerRekap = [];
+let sedangMemuat = false;
+let profilAktif = null;
+
+// NAVIGASI HALAMAN
+function pindahHalaman(halaman) {
+
+  document.querySelectorAll(".page").forEach(p => {
+    p.classList.remove("active");
+  });
+
+  document.querySelectorAll(".nav-btn").forEach(b => {
+    b.classList.remove("active");
+    b.classList.add("bg-slate-100","text-slate-600");
+  });
+
+  if (halaman === "dashboard") {
+
+    document.getElementById("pageDashboard").classList.add("active");
+    document.getElementById("navDashboard").classList.add("active");
+    document.getElementById("navDashboard").classList.remove("bg-slate-100","text-slate-600");
+
+  } else if (halaman === "master") {
+
+    document.getElementById("pageMaster").classList.add("active");
+    document.getElementById("navMaster").classList.add("active");
+    document.getElementById("navMaster").classList.remove("bg-slate-100","text-slate-600");
+
+  } else if (halaman === "allScores") {
+
+    document.getElementById("pageAllScores").classList.add("active");
+    document.getElementById("navAllScores").classList.add("active");
+    document.getElementById("navAllScores").classList.remove("bg-slate-100","text-slate-600");
+
+    renderSeluruhNilai();
+
+  } else if (halaman === "profile") {
+
+    document.getElementById("pageProfile").classList.add("active");
+
+  }
+
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+// MENGAMANKAN TEKS
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g,c => ({
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    '"':"&quot;",
+    "'":"&#039;"
+  })[c]);
+}
+
+// STATUS KONEKSI
+function setStatus(teks,warna) {
+
+  const badge = document.getElementById("statusBadge");
+
+  const warnaStatus = {
+    green:"bg-green-100 text-green-700",
+    red:"bg-red-100 text-red-700",
+    yellow:"bg-yellow-100 text-yellow-700"
+  };
+
+  badge.className =
+    "inline-flex px-3 py-1 rounded-full text-xs font-semibold " +
+    warnaStatus[warna];
+
+  badge.textContent = teks;
+}
+
+// AMBIL DATA GOOGLE SHEETS
+function ambilDataLive() {
+
+  if (sedangMemuat) return;
+
+  sedangMemuat = true;
+  setStatus("Menyinkronkan...","yellow");
+
+  const tombol = document.getElementById("refreshButton");
+
+  tombol.disabled = true;
+  tombol.textContent = "Memuat...";
+
+  const callbackName =
+    "sheetCallback_" + Date.now() + "_" +
+    Math.floor(Math.random()*100000);
+
+  const script = document.createElement("script");
+
+  let selesai = false;
+
+  const timeout = setTimeout(() => {
+    gagal("Koneksi timeout. Periksa Apps Script.");
+  },20000);
+
+  function bersihkan() {
+
+    clearTimeout(timeout);
+
+    delete window[callbackName];
+
+    script.remove();
+
+    sedangMemuat = false;
+
+    tombol.disabled = false;
+    tombol.textContent = "↻ Refresh";
+  }
+
+  function gagal(pesan) {
+
+    if (selesai) return;
+
+    selesai = true;
+
+    bersihkan();
+
+    setStatus("Gagal Terhubung","red");
+
+    console.error(pesan);
+  }
+
+  window[callbackName] = function(result) {
+
+    if (selesai) return;
+
+    selesai = true;
+
+    bersihkan();
+
+    try {
+
+      if (!result || result.status !== "success") {
+        throw new Error(result?.message || "Data tidak valid.");
+      }
+
+      prosesData(result);
+
+      setStatus("● Live Terhubung","green");
+
+      document.getElementById("lastUpdate").textContent =
+        "Update: " + new Date().toLocaleString("id-ID");
+
+    } catch(error) {
+
+      console.error(error);
+
+      setStatus("Kesalahan Data","red");
+
+    }
+  };
+
+  script.onerror = () => {
+    gagal("Tidak dapat mengakses Google Apps Script.");
+  };
+
+  script.src =
+    WEB_APP_URL +
+    "?callback=" + encodeURIComponent(callbackName) +
+    "&t=" + Date.now();
+
+  document.head.appendChild(script);
+}
+
+// MEMPROSES DATA
+function prosesData(result) {
+
+  if (!Array.isArray(result.database) ||
+      !Array.isArray(result.peraturan)) {
+    throw new Error("Struktur Spreadsheet tidak sesuai.");
+  }
+
+  // DATABASE PELANGGARAN
+  masterPelanggaran = {};
+
+  for (let i=1; i<result.database.length; i++) {
+
+    const nama = String(result.database[i][0] || "").trim();
+
+    const poin = Number(
+      String(result.database[i][1] || "").replace(",",".")
+    );
+
+    if (nama && Number.isFinite(poin)) {
+      masterPelanggaran[nama.toLowerCase()] = {
+        nama,
+        poin
+      };
+    }
+  }
+
+  // DATA SISWA
+  dataSiswa = [];
+
+  for (let i=1; i<result.peraturan.length; i++) {
+
+    const r = result.peraturan[i];
+
+    if (!String(r[1] || "").trim()) continue;
+
+    const list = [];
+
+    for (let col=4; col<=11; col++) {
+
+      const item = String(r[col] || "").trim();
+
+      if (item) list.push(item);
+    }
+
+    const nilai = Number(
+      String(r[3] || "").replace(",",".")
+    );
+
+    dataSiswa.push({
+
+      no:r[0] || i,
+
+      nama:String(r[1]).trim(),
+
+      perusahaan:String(r[2] || "-").trim(),
+
+      point:Number.isFinite(nilai) ? nilai : 100,
+
+      pelanggaran:list
+
+    });
+  }
+
+  // DATA REKAP NILAI
+  // Baris 1 judul
+  // Baris 2 kelompok
+  // Baris 3 judul bab
+  // Baris 4 dan seterusnya data siswa
+
+  const sheetRekap =
+    Array.isArray(result.rekapNilai) ? result.rekapNilai : [];
+
+  headerRekap = sheetRekap.length >= 3
+    ? sheetRekap[2].slice(3).map((v,i) =>
+        String(v || "").trim() || "Nilai " + (i+1)
+      )
+    : [];
+
+  dataRekap = [];
+
+  for (let i=3; i<sheetRekap.length; i++) {
+
+    const r = sheetRekap[i];
+
+    if (!String(r[1] || "").trim()) continue;
+
+    dataRekap.push({
+
+      no:String(r[0] || ""),
+
+      nama:String(r[1] || "").trim(),
+
+      perusahaan:String(r[2] || "").trim(),
+
+      nilai:r.slice(3)
+
+    });
+  }
+
+  // TAMPILKAN SELURUH DATA
+  renderSiswa();
+  renderPeraturan();
+  renderStatistik();
+  renderSeluruhNilai();
+
+  // PERBARUI PROFIL JIKA SEDANG DIBUKA
+  if (profilAktif !== null && dataSiswa[profilAktif]) {
+    tampilkanProfil(profilAktif);
+  }
+}
+
+// CARI BOBOT POIN
+function cariBobotPoin(nama) {
+
+  return masterPelanggaran[
+    String(nama).trim().toLowerCase()
+  ]?.poin ?? 0;
+}
+
+// WARNA POIN
+function warnaPoint(point) {
+
+  if (point<=30) return "text-red-700";
+  if (point<=60) return "text-orange-600";
+  if (point<100) return "text-yellow-600";
+
+  return "text-green-600";
+}
+
+function warnaProgress(point) {
+
+  if (point<=30) return "bg-red-500";
+  if (point<=60) return "bg-orange-500";
+  if (point<100) return "bg-yellow-500";
+
+  return "bg-green-500";
+}
+
+// PROGRESS BAR
+function renderProgress(pointSiswa) {
+
+  const point = Math.max(
+    0,
+    Math.min(100,Number(pointSiswa)||0)
+  );
+
+  return `
+    <div class="w-full">
+
+      <div class="flex justify-between text-xs mb-1">
+        <span class="text-slate-500">Sisa poin</span>
+        <span class="font-bold ${warnaPoint(pointSiswa)}">
+          ${esc(pointSiswa)}%
+        </span>
+      </div>
+
+      <div class="point-bar">
+        <div class="point-progress ${warnaProgress(pointSiswa)}"
+          style="width:${point}%">
+        </div>
+      </div>
+
+    </div>`;
+}
+
+// DAFTAR PELANGGARAN
+function renderPelanggaran(list) {
+
+  if (!list.length) {
+    return `
+      <span class="text-green-600 text-xs font-medium">
+        ✓ Tidak ada pelanggaran
+      </span>`;
+  }
+
+  return `
+    <div class="flex flex-wrap gap-1.5">
+
+      ${list.map(item => `
+        <span class="bg-red-50 border border-red-100 text-red-600 px-2 py-1 rounded-lg text-xs font-medium">
+          ${esc(item)} (-${esc(cariBobotPoin(item))})
+        </span>
+      `).join("")}
+
+    </div>`;
+}
+
+// TAMPILKAN SISWA
+function renderSiswa() {
+
+  const desktop = document.getElementById("tbodyDesktop");
+  const mobile = document.getElementById("tbodyMobile");
+
+  desktop.innerHTML = "";
+  mobile.innerHTML = "";
+
+  if (!dataSiswa.length) {
+
+    desktop.innerHTML = `
+      <tr>
+        <td colspan="6" class="p-5 text-center">
+          Belum ada data siswa.
+        </td>
+      </tr>`;
+
+    mobile.innerHTML = `
+      <p class="text-center text-slate-400 py-5">
+        Belum ada data siswa.
+      </p>`;
+
+    filterTabel();
+
+    return;
+  }
+
+  dataSiswa.forEach((siswa,index) => {
+
+    const warna = warnaPoint(siswa.point);
+
+    const progressHTML = renderProgress(siswa.point);
+
+    desktop.innerHTML += `
+
+      <tr class="hover:bg-slate-50 border-b">
+
+        <td class="p-3 border text-center">
+          ${esc(siswa.no)}
+        </td>
+
+        <td class="p-3 border font-semibold">
+
+          <button onclick="bukaProfil(${index})"
+            class="text-blue-600 hover:text-blue-800 hover:underline text-left">
+
+            ${esc(siswa.nama)}
+
+          </button>
+
+        </td>
+
+        <td class="p-3 border">
+          ${esc(siswa.perusahaan)}
+        </td>
+
+        <td class="p-3 border text-center font-bold text-lg ${warna}">
+          ${esc(siswa.point)}
+        </td>
+
+        <td class="p-3 border min-w-[170px]">
+          ${progressHTML}
+        </td>
+
+        <td class="p-3 border">
+          ${renderPelanggaran(siswa.pelanggaran)}
+        </td>
+
+      </tr>
+    `;
+
+    mobile.innerHTML += `
+
+      <div class="student-card border border-slate-200 rounded-xl p-3.5 bg-white shadow-sm">
+
+        <div class="flex justify-between items-start gap-2">
+
+          <div class="min-w-0 flex-1">
+
+            <p class="text-[10px] text-slate-400 font-semibold">
+              SISWA #${esc(siswa.no)}
+            </p>
+
+            <button onclick="bukaProfil(${index})"
+              class="font-bold text-base text-blue-600 hover:underline text-left mt-1 break-words">
+
+              ${esc(siswa.nama)}
+
+            </button>
+
+            <p class="text-xs text-slate-500 mt-1 break-words">
+              🏢 ${esc(siswa.perusahaan)}
+            </p>
+
+          </div>
+
+          <div class="text-right shrink-0">
+
+            <p class="text-[10px] text-slate-400">POINT SISA</p>
+
+            <p class="text-2xl font-extrabold ${warna}">
+              ${esc(siswa.point)}
+            </p>
+
+            <p class="text-[10px] text-slate-400">/ 100</p>
+
+          </div>
+
+        </div>
+
+        <div class="mt-3">
+          ${progressHTML}
+        </div>
+
+        <div class="border-t border-slate-100 mt-3 pt-3">
+
+          <p class="text-[10px] text-slate-400 font-bold mb-2">
+            DAFTAR PELANGGARAN
+          </p>
+
+          ${renderPelanggaran(siswa.pelanggaran)}
+
+        </div>
+
+        <button onclick="bukaProfil(${index})"
+          class="mt-3 w-full bg-blue-50 text-blue-700 rounded-lg py-2 text-xs font-semibold">
+
+          Lihat Profil dan Rekap Nilai →
+
+        </button>
+
+      </div>
+    `;
+  });
+
+  filterTabel();
+}
+
+// BUKA PROFIL
+function bukaProfil(index) {
+
+  if (!dataSiswa[index]) return;
+
+  profilAktif = index;
+
+  tampilkanProfil(index);
+
+  pindahHalaman("profile");
+}
+
+// TAMPILKAN PROFIL
+function tampilkanProfil(index) {
+
+  const siswa = dataSiswa[index];
+
+  if (!siswa) return;
+
+  document.getElementById("profileNama").textContent =
+    siswa.nama;
+
+  document.getElementById("profileNomor").textContent =
+    "Nomor siswa: " + siswa.no;
+
+  document.getElementById("profilePerusahaan").textContent =
+    siswa.perusahaan;
+
+  const point = document.getElementById("profilePoint");
+
+  point.textContent = siswa.point;
+
+  point.className =
+    "text-2xl font-bold mt-1 " + warnaPoint(siswa.point);
+
+  document.getElementById("profileProgress").innerHTML =
+    renderProgress(siswa.point);
+
+  document.getElementById("profilePelanggaran").innerHTML =
+    renderPelanggaran(siswa.pelanggaran);
+
+  renderRekapSiswa(siswa);
+}
+
+// NORMALISASI NAMA
+function normalisasi(teks) {
+
+  return String(teks || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g," ");
+}
+
+// REKAP NILAI PER SISWA
+function renderRekapSiswa(siswa) {
+
+  const tempat = document.getElementById("profileRekap");
+
+  let cocok = dataRekap.filter(r =>
+
+    normalisasi(r.nama) === normalisasi(siswa.nama) &&
+
+    normalisasi(r.perusahaan) === normalisasi(siswa.perusahaan)
+
+  );
+
+  if (!cocok.length) {
+
+    cocok = dataRekap.filter(r =>
+      normalisasi(r.nama) === normalisasi(siswa.nama)
+    );
+
+  }
+
+  if (!cocok.length) {
+
+    tempat.innerHTML = `
+
+      <div class="bg-yellow-50 border border-yellow-100 rounded-xl p-4">
+
+        <p class="font-semibold text-yellow-800 text-sm">
+          Rekap nilai belum ditemukan
+        </p>
+
+        <p class="text-xs text-yellow-700 mt-1">
+          Pastikan nama siswa di sheet Rekap Nilai sama dengan nama pada data pelanggaran.
+        </p>
+
+      </div>`;
+
+    return;
+  }
+
+  const rekap = cocok[0];
+
+  const judul = headerRekap.length
+    ? headerRekap
+    : rekap.nilai.map((v,i) => "Nilai " + (i+1));
+
+  tempat.innerHTML = `
+
+    <div class="mb-4 bg-blue-50 border border-blue-100 rounded-xl p-3">
+
+      <p class="text-xs text-blue-600">Nama siswa</p>
+
+      <p class="font-bold text-blue-900">
+        ${esc(rekap.nama)}
+      </p>
+
+      <p class="text-xs text-blue-600 mt-1">
+        ${esc(rekap.perusahaan || siswa.perusahaan)}
+      </p>
+
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+      ${judul.map((nama,i) => {
+
+        const nilai = String(rekap.nilai[i] ?? "").trim();
+
+        const kosong = !nilai || nilai === "-";
+
+        return `
+
+          <div class="border rounded-xl p-4 ${kosong ? "bg-slate-50" : "bg-white"}">
+
+            <p class="text-xs text-slate-500">
+              ${esc(nama)}
+            </p>
+
+            <p class="text-2xl font-bold mt-2 ${kosong ? "text-slate-300" : "text-blue-700"}">
+
+              ${kosong ? "Belum ada nilai" : esc(nilai)}
+
+            </p>
+
+          </div>
+
+        `;
+
+      }).join("")}
+
+    </div>
+  `;
+}
+
+// SELURUH NILAI SISWA
+function renderSeluruhNilai() {
+
+  const kepala = document.getElementById("theadAllScores");
+
+  const isi = document.getElementById("tbodyAllScores");
+
+  document.getElementById("jumlahSiswaNilai").textContent =
+    dataRekap.length;
+
+  document.getElementById("jumlahBabNilai").textContent =
+    headerRekap.length;
+
+  if (!dataRekap.length) {
+
+    kepala.innerHTML = "";
+
+    isi.innerHTML = `
+      <tr>
+        <td class="p-5 text-center text-slate-400">
+          Data rekap nilai belum tersedia.
+        </td>
+      </tr>`;
+
+    document.getElementById("jumlahHasilNilai").textContent =
+      "0 siswa";
+
+    return;
+  }
+
+  // JUDUL TABEL OTOMATIS
+  kepala.innerHTML = `
+
+    <tr>
+
+      <th class="p-3 border text-center">No</th>
+
+      <th class="p-3 border text-left">Nama Siswa</th>
+
+      <th class="p-3 border text-left">Perusahaan</th>
+
+      ${headerRekap.map(judul => `
+
+        <th class="p-3 border text-center">
+          ${esc(judul)}
+        </th>
+
+      `).join("")}
+
+    </tr>
+  `;
+
+  // ISI TABEL OTOMATIS
+  isi.innerHTML = dataRekap.map((siswa,index) => `
+
+    <tr class="score-row hover:bg-blue-50 border-b">
+
+      <td class="p-3 border text-center">
+        ${esc(siswa.no || index+1)}
+      </td>
+
+      <td class="p-3 border font-semibold text-slate-700">
+        ${esc(siswa.nama)}
+      </td>
+
+      <td class="p-3 border text-slate-600">
+        ${esc(siswa.perusahaan || "-")}
+      </td>
+
+      ${headerRekap.map((judul,i) => {
+
+        const nilai = String(siswa.nilai[i] ?? "").trim();
+
+        const kosong = !nilai || nilai === "-";
+
+        return `
+
+          <td class="p-3 border text-center font-semibold ${
+            kosong ? "text-slate-300" : "text-blue-700"
+          }">
+
+            ${kosong ? "-" : esc(nilai)}
+
+          </td>
+
+        `;
+
+      }).join("")}
+
+    </tr>
+
+  `).join("");
+
+  filterAllScores();
+}
+
+// PENCARIAN SELURUH NILAI
+function filterAllScores() {
+
+  const input = document.getElementById("searchAllScores")
+    .value.toLowerCase().trim();
+
+  const rows = document.querySelectorAll(
+    "#tbodyAllScores .score-row"
+  );
+
+  let jumlah = 0;
+
+  rows.forEach(row => {
+
+    const cocok = row.innerText.toLowerCase().includes(input);
+
+    row.style.display = cocok ? "" : "none";
+
+    if (cocok) jumlah++;
+
+  });
+
+  document.getElementById("jumlahHasilNilai").textContent =
+    jumlah + " siswa ditampilkan";
+}
+
+// MASTER PERATURAN
+function renderPeraturan() {
+
+  const grid = document.getElementById("gridPeraturan");
+
+  grid.innerHTML = "";
+
+  const aturan = Object.values(masterPelanggaran);
+
+  const totalBobot = aturan.reduce(
+    (jumlah,item) => jumlah+item.poin,
+    0
+  );
+
+  document.getElementById("totalAturan").textContent =
+    aturan.length;
+
+  document.getElementById("totalBobot").textContent =
+    totalBobot;
+
+  aturan.forEach(item => {
+
+    grid.innerHTML += `
+
+      <div class="master-card flex justify-between items-center gap-3 bg-slate-50 border border-slate-100 rounded-xl p-3">
+
+        <span class="text-sm font-medium text-slate-700 break-words">
+          ${esc(item.nama)}
+        </span>
+
+        <span class="bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap shrink-0">
+          -${esc(item.poin)}
+        </span>
+
+      </div>
+    `;
+  });
+
+  if (!aturan.length) {
+
+    grid.innerHTML = `
+      <p class="text-slate-400 text-sm">
+        Belum ada peraturan.
+      </p>`;
+
+  }
+
+  filterMaster();
+}
+
+// STATISTIK
+function renderStatistik() {
+
+  const total = dataSiswa.length;
+
+  const melanggar = dataSiswa.filter(
+    s => s.pelanggaran.length>0
+  ).length;
+
+  document.getElementById("totalSiswa").textContent = total;
+
+  document.getElementById("totalMelanggar").textContent =
+    melanggar;
+
+  document.getElementById("totalAman").textContent =
+    total-melanggar;
+}
+
+// FILTER DASHBOARD
+function filterTabel() {
+
+  const input = document.getElementById("searchInput")
+    .value.toLowerCase();
+
+  const desktopRows =
+    document.querySelectorAll("#tbodyDesktop tr");
+
+  const mobileCards =
+    document.querySelectorAll("#tbodyMobile .student-card");
+
+  let jumlah = 0;
+
+  desktopRows.forEach(row => {
+
+    const cocok = row.innerText.toLowerCase().includes(input);
+
+    row.style.display = cocok ? "" : "none";
+
+    if (cocok) jumlah++;
+
+  });
+
+  mobileCards.forEach(card => {
+
+    const cocok = card.innerText.toLowerCase().includes(input);
+
+    card.style.display = cocok ? "" : "none";
+
+  });
+
+  document.getElementById("jumlahTampil").textContent =
+    jumlah + " siswa ditemukan";
+}
+
+// FILTER MASTER
+function filterMaster() {
+
+  const input = document.getElementById("searchMaster")
+    .value.toLowerCase();
+
+  const cards = document.querySelectorAll(".master-card");
+
+  let jumlah = 0;
+
+  cards.forEach(card => {
+
+    const cocok = card.innerText.toLowerCase().includes(input);
+
+    card.style.display = cocok ? "" : "none";
+
+    if (cocok) jumlah++;
+
+  });
+
+  document.getElementById("jumlahMaster").textContent =
+    jumlah + " peraturan ditampilkan";
+}
+
+// MULAI DAN SINKRONISASI OTOMATIS
+ambilDataLive();
+
+setInterval(ambilDataLive,30000);
+
+</script>
+
+</body>
+</html>
